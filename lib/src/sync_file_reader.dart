@@ -33,7 +33,10 @@ class SyncFileReader {
   }
 
   Uint8List? readBytes(int number) {
-    final list = _file.buffer?.asUint8List(_position, number);
+    final bytes = _file.bytes;
+    final list = bytes == null
+        ? null
+        : Uint8List.sublistView(bytes, _position, _position + number);
     _position += number;
     return list;
   }

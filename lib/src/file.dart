@@ -63,7 +63,7 @@ class File {
   /// The [data] parameter must not be null.
   File.fromByteData(Uint8List data)
       : uint8list = data,
-        _byteData = data.buffer.asByteData();
+        _byteData = ByteData.sublistView(data);
 
   /// Sets the file data from a [Uint8List].
   ///
@@ -73,6 +73,6 @@ class File {
   /// The [data] parameter must not be null.
   void setByteData(Uint8List data) {
     uint8list = data;
-    _byteData = data.buffer.asByteData();
+    _byteData = ByteData.sublistView(data);
   }
 }

@@ -1,0 +1,7 @@
+Wrote and reopened a fictional 2 x 2 RGB PSD.
+Depth: 8 bits/channel
+Layers: 1, name: Example colors
+Pixels: red, green, blue, white
+All three merged channel buffers match the original bytes.
+PSD size: 156 bytes
+No Photoshop installation or external file was used.

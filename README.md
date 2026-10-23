@@ -1,184 +1,62 @@
 # psd_sdk
 
-[![pub package](https://img.shields.io/badge/pub-0.2.3-blueviolet.svg)](https://pub.dev/packages/psd_sdk)
-[![style: very good analysis](https://img.shields.io/badge/style-very_good_analysis-B22C89.svg)](https://pub.dev/packages/very_good_analysis)
-[![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+A Dart library for reading PSD metadata, layers and pixel channels, with limited PSD export. It is a port of the [Molecular Matters PSD SDK](https://github.com/MolecularMatters/psd_sdk), with that project's attribution preserved.
 
-A Dart library for reading and manipulating Photoshop PSD files. This library is a Dart port of the original [psd_sdk](https://github.com/MolecularMatters/psd_sdk) by [Molecular Matters](https://molecular-matters.com/).
+![Actual output from writing and reopening a fictional four-pixel PSD](docs/demo/round-trip.png)
 
-## Features
+The example writes a 2 × 2 RGB document and checks the reopened channel bytes. This is library output, not a Photoshop screenshot. [Capture details](docs/demo/README.md).
 
-### Reading Capabilities
-- ✅ Full support for PSD file structure
-- ✅ Layer groups and nested layers
-- ✅ Smart Objects
-- ✅ User and vector masks
-- ✅ Transparency masks and additional alpha channels
-- ✅ Support for 8-bit, 16-bit, and 32-bit data
-- ✅ Grayscale and RGB color modes
-- ✅ Unicode layer names (Japanese, Chinese, etc.)
-- ✅ All Photoshop compression types (RAW, RLE, ZIP, ZIP with prediction)
+## Run the example
 
-### Export Capabilities
-- ✅ Basic export functionality
-- ✅ Layer data extraction
-- ✅ Channel data access
-- ✅ Mask data retrieval
+The recorded checks used Dart 3.8.0 on Linux ARM64:
 
-## Installation
-
-Add the package to your `pubspec.yaml`:
-
-```yaml
-dependencies:
-  psd_sdk: ^0.2.3
-```
-
-Then run:
-```bash
+```sh
+git clone https://github.com/olegpustovit/psd_sdk.git
+cd psd_sdk
 dart pub get
+dart run example/round_trip.dart example-colors.psd
 ```
 
-## Usage
+The program creates fictional red, green, blue and white pixels, writes one layer and a merged image, then reopens the file and checks its dimensions, layer name and composite channels. No Photoshop installation or external document is needed. The output path is optional and is overwritten by the example.
 
-### Reading a PSD File
+## Read an existing file
+
+Use aliases to distinguish the SDK's memory wrapper from dart:io's file class:
 
 ```dart
-import 'dart:io';
-import 'package:psd_sdk/psd_sdk.dart';
+import 'dart:io' as io;
+import 'package:psd_sdk/psd_sdk.dart' as psd;
 
-void main() async {
-  // Load a PSD file
-  final file = File.fromByteData(File('path/to/your/file.psd').readAsBytesSync());
-  final document = Document.fromFile(file);
-
-  // Access document properties
-  print('Width: ${document.width}');
-  print('Height: ${document.height}');
-  print('Color Mode: ${document.colorMode}');
-  print('Bits per Channel: ${document.bitsPerChannel}');
-
-  // Parse and access layers
-  final layerMaskSection = document.parseLayerMaskSection(file);
-  for (final layer in layerMaskSection?.layers ?? []) {
-    layer.extract(file);
-    print('Layer: ${layer.name}');
-    print('Visible: ${layer.visible}');
-    print('Opacity: ${layer.opacity}');
+void inspect(String path) {
+  final input = psd.File.fromByteData(io.File(path).readAsBytesSync());
+  final document = psd.Document.fromFile(input);
+  final section = document.parseLayerMaskSection(input);
+  print('${document.width} x ${document.height}');
+  for (final layer in section?.layers ?? <psd.Layer?>[]) {
+    if (layer == null) continue;
+    layer.extract(input);
+    print(layer.name);
   }
 }
 ```
 
-### Writing a PSD File
+The checked-in examples also contain TGA export helpers. They are separate from a claim that every PSD feature can be rendered or exported.
 
-```dart
-import 'dart:io';
-import 'package:psd_sdk/psd_sdk.dart';
+## Status and limits
 
-void main() async {
-  // Create a new PSD document
-  final document = ExportDocument(
-    800,  // width
-    600,  // height
-    8,    // bits per channel
-    ExportColorMode.rgb  // color mode
-  );
+The merged-image parser handles RAW and RLE. Layer handlers and compression enums cover other cases, but their existence is not complete PSD support. Smart-object records, masks, blend modes, color depths and compression combinations need feature-specific validation. The library does not establish Photoshop-equivalent compositing.
 
-  // Add a layer
-  final layer = document.addLayer(document, 'My Layer');
-  
-  // Create some sample data
-  final data = Uint8List(800 * 600);
-  for (var i = 0; i < data.length; i++) {
-    data[i] = (i % 255).toInt();
-  }
+This cleanup fixed byte-view offsets and PSD byte-order handling for composite reads. Three regressions cover exported 8-, 16- and 32-bit composites read from a nonzero-offset input view. All 38 tests and static analysis passed. A self-round-trip is not independent Photoshop interoperability testing.
 
-  // Update layer with data
-  document.updateLayer(
-    layer!,
-    ExportChannel.red,
-    0, 0, 800, 600,  // x, y, width, height
-    data,
-    CompressionType.raw
-  );
+These source changes are not a published package release. Do not assume an installed package version includes them. Although the manifest retains a Dart 2.17 language level, archive 4.x requires Dart 3 or newer. Development checks used Dart 3.8.0; use that version for reproduction.
 
-  // Write to file
-  final file = File();
-  document.write(file);
-  File('output.psd').writeAsBytesSync(file.bytes!);
-}
+```sh
+dart test
+dart analyze
 ```
 
-### Debug Logging
-
-The PSD SDK includes configurable logging for debugging purposes:
-
-```dart
-import 'package:psd_sdk/psd_sdk.dart';
-
-// Enable logging with custom handler
-PsdLogging.enable();
-PsdLogging.setLogHandler((level, channel, message) {
-  print('[$level] $channel: $message');
-});
-
-// Parse PSD file - any warnings/errors will be logged
-final document = Document.fromFile(file);
-final layerMaskSection = document.parseLayerMaskSection(file);
-
-// Disable logging when done
-PsdLogging.disable();
-
-// Get last error if needed
-final lastError = PsdLogging.getLastError();
-```
-
-## API Reference
-
-### Core Classes
-
-- `File`: Base class for handling binary file data
-- `Document`: Main class for PSD file operations and parsing
-- `ExportDocument`: Class for creating and exporting PSD files
-- `Layer`: Represents a PSD layer with properties and data
-- `LayerRect`: Interface for layer and mask dimensions
-- `LayerMaskSection`: Container for layer and mask information
-- `Channel`: Represents a channel in a Photoshop layer
-- `AlphaChannel`: Represents an alpha channel with color and opacity information
-- `Mask`: Base class for layer masks
-- `LayerMask`: Represents a layer mask
-- `VectorMask`: Represents a vector mask
-- `PsdLogging`: Static class for controlling debug logging
-
-### Utility Classes
-
-- `ImageUtil`: Utility class for handling image data operations
-- `Section`: Base class for PSD file sections
-
-### Enums
-
-- `ColorMode`: Document color modes (Bitmap, Grayscale, RGB, etc.)
-- `ChannelType`: Channel data types
-- `LayerType`: Layer types
-- `ExportColorMode`: Export color modes (Grayscale, RGB)
-- `ExportChannel`: Export channel types (Gray, Red, Green, Blue, Alpha)
-- `CompressionType`: Data compression types (Raw, RLE, ZIP, ZIP with prediction)
-- `BlendMode`: Layer blend modes (Normal, Multiply, Screen, etc.)
-- `AlphaChannelMode`: Alpha channel modes
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+See [example and test notes](docs/demo/README.md) for scope and commands. Issues belong in [this repository](https://github.com/olegpustovit/psd_sdk/issues).
 
 ## License
 
-This project is licensed under the BSD-3-Clause License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Original C++ implementation by [Molecular Matters](https://molecular-matters.com/)
-- Dart port and maintenance by [nexo tech](https://github.com/nexo-tech)
-
-## Support
-
-For support, please open an issue in the [GitHub repository](https://github.com/nexo-tech/psd_sdk).
+[BSD 2-Clause](LICENSE), retaining the copyrights of Oleg Pustovit and Molecular Matters. The former README badge incorrectly named BSD 3-Clause.

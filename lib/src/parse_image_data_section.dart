@@ -165,7 +165,8 @@ void _endianConvert<T extends NumDataType>(
   }
   final size = width * height;
   for (var i = 0; i < channelCount; ++i) {
-    var byteData = images[i]?.data?.buffer.asByteData();
+    final bytes = images[i]?.data;
+    final byteData = bytes == null ? null : ByteData.sublistView(bytes);
     if (byteData == null) {
       continue;
     }
@@ -176,7 +177,7 @@ void _endianConvert<T extends NumDataType>(
 
     for (var j = 0; j < size; ++j) {
       var pos = sizeofT * j;
-      data[j] = getElemHostEndian<T>(byteData, pos);
+      data[j] = getElemEndian<T>(byteData, pos, Endian.big);
     }
     images[i]!.data = copied;
   }

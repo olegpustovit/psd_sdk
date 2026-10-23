@@ -77,8 +77,8 @@ The library is organized into parsing and exporting functionality:
 
 3. **Image Data Handling**:
    - `ImageUtil` provides utilities for pixel data manipulation
-   - Supports multiple compression types (RAW, RLE, ZIP)
-   - Handles 8-bit, 16-bit, and 32-bit color depths
+   - Compression enums and individual section handlers have different coverage. The merged-image parser handles RAW and RLE; do not infer complete ZIP composite support from an enum.
+   - Raw merged-channel round-trip tests cover 8-bit, 16-bit and 32-bit data; this is not coverage of every PSD feature at those depths.
    - Color modes: Grayscale, RGB (CMYK reading supported but not export)
 
 4. **Export System**:
@@ -104,5 +104,6 @@ The library is organized into parsing and exporting functionality:
 
 ## Dart SDK Constraints
 
-Requires Dart SDK `>=2.17.0 <4.0.0`
-EOF < /dev/null
+The manifest keeps the existing Dart 2.17 language level. The archive 4.x dependency requires Dart 3 or newer; development lints/tests used Dart 3.8.0. Do not advertise the older manifest lower bound as a working dependency combination.
+
+Use the tested example/round_trip.dart for documentation. Qualify export as limited: a self-round-trip does not prove Photoshop interoperability. Preserve Molecular Matters attribution and the actual BSD 2-Clause license. Never replace source fixtures with client documents or claim enum values establish complete format support.
